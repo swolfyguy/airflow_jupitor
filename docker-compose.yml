@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  database:
+    container_name: database
+    hostname: database
+    image: postgres:13
+    volumes:
+      - database-data:/var/lib/postgresql/data/
+    env_file:
+      - ./database/.env
+    ports:
+      - "6543:5432"
+    networks:
+      - airflow-network
+
+  airflow-init:
+    container_name: airflow-init
+    hostname: airflow-init
+    image: apache/airflow:2.3.0
+    env_file:
+      - ./airflow/.env
+    depends_on:
+      - database
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/notebooks:/opt/airflow/notebooks
+    entrypoint: /bin/bash
+    command: >
+      -c "pip install papermill && pip install nbformat && pip install nbconvert &&  airflow users list || (airflow db init
+      && airflow users create --role Admin --username airflow --password airflow -e airflow@airflow.com -f airflow -l airflow)"
+    restart: on-failure
+    networks:
+      - airflow-network
+
+  airflow-webserver:
+    container_name: airflow-webserver
+    hostname: airflow-webserver
+    image: apache/airflow:2.3.0
+    depends_on:
+      - airflow-init
+    env_file:
+      - ./airflow/.env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/scripts:/opt/airflow/scripts
+    ports:
+      - "8080:8080"
+    entrypoint: /bin/bash
+    command: -c "pip install papermill && pip install nbconvert &&  pip install nbformat && airflow webserver"
+    restart: always
+    networks:
+      - airflow-network
+
+  airflow-scheduler:
+    container_name: airflow-scheduler
+    hostname: airflow-scheduler
+    image: apache/airflow:2.3.0
+    depends_on:
+      - airflow-webserver
+    env_file:
+      - ./airflow/.env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/logs:/opt/airflow/logs
+    entrypoint: /bin/bash
+    command: -c "pip install papermill && pip install nbformat && pip install nbconvert && airflow scheduler"
+    restart: always
+    networks:
+      - airflow-network
+
+  jupyter:
+    image: jupyter/base-notebook
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    ports:
+      - "8888:8888"
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4:latest
+    restart: always
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - database
+    ports:
+      - "5051:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: airflow@airflow.com
+      PGADMIN_DEFAULT_PASSWORD: airflow
+    networks:
+      - airflow-network
+
+networks:
+  airflow-network:
+    name: airflow-network
+
+volumes:
+  database-data:
+  pgadmin-data:
