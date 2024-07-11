@@ -28,8 +28,8 @@ dag = DAG(
 # Define the Python function to execute the notebook
 def run_notebook(**kwargs):
     pm.execute_notebook(
-        input_path='/opt/airflow/notebooks/notebook.ipynb',  # Input notebook
-        output_path='/opt/airflow/notebooks/notebook_output.ipynb',  # Output notebook
+        input_path='/opt/airflow/dags/notebooks/notebook.ipynb',  # Input notebook
+        output_path='/opt/airflow/dags/notebooks/notebook_output.ipynb',  # Output notebook
         kernel_name='python3'
     )
 
