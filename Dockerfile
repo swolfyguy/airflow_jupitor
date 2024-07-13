@@ -15,6 +15,11 @@ RUN pip install apache-airflow[postgres,crypto,kubernetes]
 
 RUN pip install papermill
 
+# Install Jupyter and necessary packages
+USER airflow
+RUN pip install jupyterlab papermill nbformat nbconvert ipykernel && \
+    python -m ipykernel install --user --name=python3
+
 # Copy the Airflow configuration files
 COPY airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 COPY dags ${AIRFLOW_HOME}/dags
